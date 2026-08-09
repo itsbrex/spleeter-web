@@ -3,13 +3,23 @@ name: Docker Compose push (master)
 on:
   push:
     branches: [ master ]
-concurrency: 
+  # Manually publish the checked-out branch under a custom tag, so that a
+  # preview build can be pulled with TAG=<tag> without building from source
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker Hub tag to publish (e.g. recovery)'
+        required: true
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build-cpu:
     name: Build and publish CPU images
     runs-on: ubuntu-latest
+    # Set at job level so that both the build and push steps use the same tag
+    env:
+      TAG: ${{ inputs.tag || 'latest' }}
     steps:
     - uses: actions/checkout@v4
     - name: Docker login
@@ -36,6 +46,8 @@ jobs:
 
   build-gpu:
     name: Build and publish GPU images
+    # GPU images are only published for master, not for branch previews
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
